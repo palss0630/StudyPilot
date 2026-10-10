@@ -1,0 +1,14 @@
+# Design Decisions
+- Decoupled Architecture: FastAPI (Backend for Render) + React & Vite (Frontend for Vercel)
+- Server-Sent Events (SSE): Enables live real-time agent trace streaming to the React UI without WebSockets overhead
+- No LangChain: transparent agent loop, easy to explain, fewer dependencies
+- SQLite: built into Python, zero setup, sufficient for a study tool
+- DuckDuckGo: no API key required, good search quality
+- AST-based calculator: security-first, no eval/exec
+- Pydantic for validation: type-safe JSON parsing with clear error messages
+- Generator-based orchestrator: enables streaming UI without callbacks
+- Demo mode: enables testing and demo without any API key
+- LIKE-based note search: simple, no embeddings needed, sufficient for keyword recall
+- Exponential backoff with model fallback: handles rate limits gracefully
+- SSRF protection in webpage reader: defense in depth
+- All web content treated as untrusted: prevents prompt injection from scraped pages
