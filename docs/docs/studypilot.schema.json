@@ -1,0 +1,125 @@
+
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StudyPilot Technical Schema",
+  "description": "Data contracts for the StudyPilot agentic AI backend.",
+  "type": "object",
+  "properties": {
+    "RunAgentRequest": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      },
+      "required": ["goal"],
+      "additionalProperties": false
+    },
+    "NoteCreateRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "tags": {
+          "type": ["string", "null"],
+          "default": ""
+        }
+      },
+      "required": ["title", "content"],
+      "additionalProperties": false
+    },
+    "QuizResultCreateRequest": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string"
+        },
+        "score": {
+          "type": "integer"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "session_id": {
+          "type": ["string", "null"],
+          "default": null
+        },
+        "details": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "default": null
+        }
+      },
+      "required": ["topic", "score", "total"],
+      "additionalProperties": false
+    },
+    "StudyHelperRequest": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "n": {
+          "type": ["integer", "null"],
+          "default": 5
+        }
+      },
+      "required": ["topic", "content"],
+      "additionalProperties": false
+    },
+    "PlanStep": {
+      "type": "object",
+      "properties": {
+        "step": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string"
+        },
+        "tools_needed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["step", "description", "tools_needed"],
+      "additionalProperties": false
+    },
+    "PlanResult": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/properties/PlanStep"
+          },
+          "minItems": 2,
+          "maxItems": 6
+        }
+      },
+      "required": ["steps"],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "RunAgentRequest",
+    "NoteCreateRequest",
+    "QuizResultCreateRequest",
+    "StudyHelperRequest",
+    "PlanStep",
+    "PlanResult"
+  ],
+  "additionalProperties": false
+}
