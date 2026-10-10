@@ -82,7 +82,8 @@ export function streamAgentExecution(goal, sessionId, onEvent, onError, onComple
   })
     .then(async (response) => {
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errText = await response.text().catch(() => '');
+        throw new Error(`HTTP ${response.status}: ${errText || response.statusText}`);
       }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -93,26 +94,30 @@ export function streamAgentExecution(goal, sessionId, onEvent, onError, onComple
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop(); // keep last incomplete chunk
+        // Normalize CRLF and standalone CR to standard LF
+        const normalized = buffer.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const blocks = normalized.split('\n\n');
+        buffer = blocks.pop() || '';
 
-        for (const block of lines) {
+        for (const block of blocks) {
           if (!block.trim()) continue;
           const blockLines = block.split('\n');
           let eventType = 'message';
           let eventData = '';
 
           for (const line of blockLines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              eventData = line.slice(6);
+            const trimmed = line.trim();
+            if (trimmed.startsWith('event:')) {
+              eventType = trimmed.slice(6).trim();
+            } else if (trimmed.startsWith('data:')) {
+              const val = line.startsWith('data: ') ? line.slice(6) : line.slice(5);
+              eventData = eventData ? `${eventData}\n${val}` : val;
             }
           }
 
           if (eventData) {
             try {
-              const parsed = JSON.parse(eventData);
+              const parsed = JSON.parse(eventData.trim());
               onEvent({ type: eventType, data: parsed });
             } catch (err) {
               console.error('Failed to parse SSE event data', err, eventData);
@@ -120,6 +125,31 @@ export function streamAgentExecution(goal, sessionId, onEvent, onError, onComple
           }
         }
       }
+
+      // Handle trailing buffer block
+      if (buffer.trim()) {
+        const blockLines = buffer.split('\n');
+        let eventType = 'message';
+        let eventData = '';
+        for (const line of blockLines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('event:')) {
+            eventType = trimmed.slice(6).trim();
+          } else if (trimmed.startsWith('data:')) {
+            const val = line.startsWith('data: ') ? line.slice(6) : line.slice(5);
+            eventData = eventData ? `${eventData}\n${val}` : val;
+          }
+        }
+        if (eventData) {
+          try {
+            const parsed = JSON.parse(eventData.trim());
+            onEvent({ type: eventType, data: parsed });
+          } catch (err) {
+            console.error('Failed to parse trailing SSE event data', err);
+          }
+        }
+      }
+
       if (onComplete) onComplete();
     })
     .catch((err) => {

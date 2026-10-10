@@ -164,7 +164,7 @@ export default function App() {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  const handleSendMessage = (e) => {
+    const handleSendMessage = (e) => {
     e?.preventDefault();
     const query = inputGoal.trim();
     if (!query || isStreaming) return;
@@ -179,6 +179,7 @@ export default function App() {
 
     let assistantAnswer = '';
     let accumulatedSources = [];
+    const localTrace = [];
 
     streamAgentExecution(
       query,
@@ -189,7 +190,8 @@ export default function App() {
           loadSessions();
         } else if (event.type === 'agent_event') {
           const evData = event.data;
-          setCurrentTraceEvents((prev) => [...prev, evData]);
+          localTrace.push(evData);
+          setCurrentTraceEvents([...localTrace]);
 
           if (evData.type === 'final_answer') {
             assistantAnswer = evData.answer;
@@ -201,30 +203,36 @@ export default function App() {
       },
       (err) => {
         setIsStreaming(false);
+        const apiTarget = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         setMessages((prev) => [
           ...prev,
           {
             role: 'assistant',
-            content: `**Error:** Could not complete request (${err.message})`,
-            trace: currentTraceEvents,
+            content: `**Connection Error:** Unable to reach StudyPilot backend server (${err.message}).\n\nEnsure your backend server is running at \`${apiTarget}\`.`,
+            trace: [...localTrace],
           },
         ]);
+        setCurrentTraceEvents([]);
       },
       () => {
         setIsStreaming(false);
-        if (assistantAnswer) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: assistantAnswer,
-              sources: accumulatedSources,
-              trace: [...currentTraceEvents],
-            },
-          ]);
-          setCurrentTraceEvents([]);
-          loadSessions();
-        }
+        const finalAnswer =
+          assistantAnswer ||
+          (localTrace.length > 0
+            ? 'Research completed, but no final synthesis was generated.'
+            : 'No response was returned by the agent. Please verify that your backend server is running and GROQ_API_KEY is configured.');
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: finalAnswer,
+            sources: accumulatedSources,
+            trace: [...localTrace],
+          },
+        ]);
+        setCurrentTraceEvents([]);
+        loadSessions();
       }
     );
   };

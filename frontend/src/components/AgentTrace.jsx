@@ -28,7 +28,22 @@ export default function AgentTrace({ events = [], isStreaming = false }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedResults, setExpandedResults] = useState({});
 
-  if (!events || events.length === 0) return null;
+    if (!events || events.length === 0) {
+    if (isStreaming) {
+      return (
+        <div className="my-2 p-3.5 rounded-2xl border border-slate-800 bg-slate-900/60 backdrop-blur-md flex items-center gap-3 text-xs text-slate-300 shadow-lg">
+          <div className="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-semibold text-slate-200">StudyPilot Agent Active</span>
+            <span className="text-[11px] text-slate-400 animate-pulse">Formulating multi-step reasoning plan...</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   // Extract Plan
   const planEvent = events.find((e) => e.type === 'plan_created');
