@@ -184,16 +184,44 @@ export default function AgentTrace({ events = [], isStreaming = false }) {
 
           {/* Reflection Section */}
           {reflection && (
-            <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-800/40 flex items-start gap-2.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="font-semibold text-slate-200">
-                  Self-Reflection Critique: {reflection.ok ? 'Verified Grounded' : 'Revision Applied'}
+            <div className="p-3.5 rounded-xl bg-slate-900/80 border border-indigo-800/40 space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2 font-semibold text-slate-200">
+                  <CheckCircle2 className={`w-4 h-4 shrink-0 ${reflection.ok ? 'text-emerald-400' : 'text-amber-400'}`} />
+                  <span>
+                    Self-Critique: {reflection.ok ? 'Verified Accurate & Grounded' : 'Revision Applied'}
+                  </span>
                 </div>
-                <div className="text-slate-400 text-[11px] mt-0.5">
-                  Verified answers against external tool observations and factual consistency.
-                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                    reflection.verification_mode === 'grounded_sources'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                  }`}
+                >
+                  {reflection.verification_mode === 'grounded_sources'
+                    ? 'Online Sources Grounded'
+                    : 'Internal Knowledge Audit'}
+                </span>
               </div>
+
+              {reflection.critique && (
+                <div className="text-slate-300 text-[11px] leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+                  <span className="font-semibold text-indigo-300 block mb-1">Critique Assessment:</span>
+                  {reflection.critique}
+                </div>
+              )}
+
+              {reflection.issues && reflection.issues.length > 0 && (
+                <div className="text-[11px] space-y-1 pt-1">
+                  <span className="font-semibold text-amber-300">Audited Issues Addressed:</span>
+                  <ul className="list-disc list-inside space-y-0.5 text-slate-400 pl-1">
+                    {reflection.issues.map((iss, iidx) => (
+                      <li key={iidx}>{iss}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -229,20 +229,22 @@ def _extract_sources(observations: List[Dict[str, Any]]) -> List[str]:
                                 seen.add(url)
                                 sources.append(url)
         elif name == "wikipedia_summary":
-            args = obs.get("args", {})
-            topic = ""
-            if isinstance(args, str):
-                try:
-                    topic = json.loads(args).get("topic", "")
-                except Exception:
-                    pass
-            elif isinstance(args, dict):
-                topic = args.get("topic", "")
-            if topic:
-                src = f"Wikipedia: {topic}"
-                if src not in seen:
-                    seen.add(src)
-                    sources.append(src)
+            # Only cite if summary was found and not a fallback note
+            if not result.startswith("Note:"):
+                args = obs.get("args", {})
+                topic = ""
+                if isinstance(args, str):
+                    try:
+                        topic = json.loads(args).get("topic", "")
+                    except Exception:
+                        pass
+                elif isinstance(args, dict):
+                    topic = args.get("topic", "")
+                if topic:
+                    src = f"Wikipedia: {topic}"
+                    if src not in seen:
+                        seen.add(src)
+                        sources.append(src)
         elif name == "read_webpage":
             args = obs.get("args", {})
             url = ""

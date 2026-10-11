@@ -6,7 +6,7 @@ import {
   Plus,
   Trash2,
   ChevronLeft,
-  ChevronRight,
+  X,
   GraduationCap,
   Sparkles,
 } from 'lucide-react';
@@ -25,10 +25,26 @@ export default function Sidebar({
 }) {
   const [activeTab, setActiveTab] = useState('sessions'); // 'sessions' | 'notes' | 'quizzes'
 
+  const handleSelect = (id) => {
+    onSelectSession(id);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      onToggle();
+    }
+  };
+
+  const handleNew = () => {
+    onNewSession();
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      onToggle();
+    }
+  };
+
   return (
     <aside
-      className={`fixed lg:static top-0 left-0 z-40 h-full w-80 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${
-        isOpen ? 'translate-x-0' : '-translate-x-full lg:-translate-x-full'
+      className={`fixed lg:static top-0 left-0 z-40 h-full w-72 sm:w-80 max-w-[85vw] bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 ease-in-out shadow-2xl lg:shadow-none ${
+        isOpen
+          ? 'translate-x-0 lg:w-80'
+          : '-translate-x-full lg:w-0 lg:border-r-0 lg:overflow-hidden pointer-events-none lg:pointer-events-auto'
       }`}
     >
       {/* Brand Header */}
@@ -50,16 +66,18 @@ export default function Sidebar({
         <button
           onClick={onToggle}
           className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-          title="Close sidebar"
+          title="Close menu"
+          aria-label="Close menu"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <X className="w-5 h-5 lg:hidden" />
+          <ChevronLeft className="w-5 h-5 hidden lg:block" />
         </button>
       </div>
 
       {/* New Session Button */}
       <div className="p-3">
         <button
-          onClick={onNewSession}
+          onClick={handleNew}
           className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 text-white font-medium text-sm shadow-md shadow-brand-600/20 hover:from-brand-500 hover:to-indigo-500 transition-all active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
@@ -116,7 +134,7 @@ export default function Sidebar({
               sessions.map((s) => (
                 <div
                   key={s.id}
-                  onClick={() => onSelectSession(s.id)}
+                  onClick={() => handleSelect(s.id)}
                   className={`group flex items-center justify-between p-2.5 rounded-xl text-xs cursor-pointer transition-all ${
                     activeSessionId === s.id
                       ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'

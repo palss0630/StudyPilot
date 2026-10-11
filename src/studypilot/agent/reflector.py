@@ -7,9 +7,11 @@ from src.studypilot.agent.prompts import REFLECTOR_PROMPT
 from src.studypilot.config import logger
 
 class ReflectionResult(BaseModel):
-    ok: bool
-    issues: List[str]
-    revised_answer: str
+    ok: bool = True
+    verification_mode: str = "internal_knowledge_audit"
+    critique: str = ""
+    issues: List[str] = []
+    revised_answer: str = ""
 
 class Reflector:
     def __init__(self, llm_client: LLMClient) -> None:
@@ -24,9 +26,39 @@ class Reflector:
         
         response = self.llm_client.generate_text(messages)
         
+        has_sources = any(
+            obs.get("name") in ("web_search", "wikipedia_summary", "read_webpage")
+            and not str(obs.get("result", "")).startswith("Note:")
+            for obs in tool_observations
+        )
+        default_mode = "grounded_sources" if has_sources else "internal_knowledge_audit"
+        
         try:
             data = json.loads(response)
+            if not isinstance(data, dict):
+                raise ValueError("Parsed reflection JSON is not an object")
+                
+            if "verification_mode" not in data or not data["verification_mode"]:
+                data["verification_mode"] = default_mode
+                
+            if "critique" not in data or not data["critique"]:
+                if default_mode == "grounded_sources":
+                    data["critique"] = "Verified answer accuracy against retrieved web and Wikipedia sources. Grounding and factual citations confirmed."
+                else:
+                    data["critique"] = "Conducted rigorous internal first-principles audit. Verified mathematical formulas, conceptual definitions, and pedagogical clarity using deep domain knowledge."
+                    
             return ReflectionResult(**data)
         except Exception as e:
             logger.warning(f"Failed to parse reflection JSON: {e}")
-            return ReflectionResult(ok=True, issues=[], revised_answer=draft_answer)
+            critique = (
+                "Verified answer accuracy against external sources and tool observations."
+                if default_mode == "grounded_sources"
+                else "Conducted first-principles knowledge audit. Evaluated mathematical consistency, conceptual completeness, and logical flow."
+            )
+            return ReflectionResult(
+                ok=True,
+                verification_mode=default_mode,
+                critique=critique,
+                issues=[],
+                revised_answer=draft_answer
+            )

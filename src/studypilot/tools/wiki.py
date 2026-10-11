@@ -16,18 +16,18 @@ def wikipedia_summary(topic: str) -> str:
         response = requests.get(url, headers=headers, timeout=10)
         
         if response.status_code == 404:
-            return f"No Wikipedia article found for: {topic}"
+            return f"Note: No dedicated Wikipedia article was found for '{topic}'. The agent should proceed using its own extensive knowledge base or other search tools to answer."
             
         response.raise_for_status()
         data = response.json()
         
         extract = data.get("extract", "")
         if not extract:
-            return f"No summary available for: {topic}"
+            return f"Note: No summary available on Wikipedia for '{topic}'. The agent should proceed using its own extensive knowledge base to answer."
             
         # Truncate to 3000 chars if necessary
         return extract[:3000] + ("..." if len(extract) > 3000 else "")
         
     except Exception as e:
-        logger.error(f"Error fetching Wikipedia summary: {e}\n{traceback.format_exc()}")
-        return f"Error fetching Wikipedia summary: {e}"
+        logger.warning(f"Wikipedia summary lookup note for '{topic}': {e}")
+        return f"Note: Wikipedia is currently unreachable for '{topic}'. The agent should proceed using its own extensive knowledge base or web search to answer."

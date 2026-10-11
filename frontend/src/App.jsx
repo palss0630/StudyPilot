@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import {
   Menu,
@@ -34,6 +36,27 @@ import {
   streamAgentExecution,
 } from './api';
 
+export function preprocessMarkdown(content) {
+  if (!content || typeof content !== 'string') return '';
+  let text = content;
+
+  // 1. Convert block math \[ ... \] to $$ ... $$
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_, math) => `\n\n$$\n${math.trim()}\n$$\n\n`);
+
+  // 2. Convert inline math \( ... \) to $ ... $
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_, math) => `$${math.trim()}$`);
+
+  // 3. Convert parenthesized math formulas like (\sin(\alpha \pm \beta) = ...)
+  text = text.replace(/(^|[^\\])\(((\\[a-zA-Z]+|\s*)[^()\n]*?(?:\([^()\n]*?\)[^()\n]*?)*?=[^\n]*?)\)/g, (match, prefix, math) => {
+    if (/\\[a-zA-Z]+/.test(math)) {
+      return `${prefix}\n\n$$\n${math.trim()}\n$$\n\n`;
+    }
+    return match;
+  });
+
+  return text;
+}
+
 const EXAMPLE_PROMPTS = [
   'Teach me about black holes and quiz me on the event horizon',
   'Compare solar vs wind energy and calculate payback for 50000 cost & 5000/yr savings',
@@ -42,7 +65,12 @@ const EXAMPLE_PROMPTS = [
 ];
 
 export default function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -97,9 +125,12 @@ export default function App() {
     }
   };
 
-  const handleSelectSession = async (id) => {
+    const handleSelectSession = async (id) => {
     try {
       setActiveSessionId(id);
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
       const data = await fetchSession(id);
       setMessages(data.messages || []);
       setCurrentTraceEvents([]);
@@ -112,6 +143,9 @@ export default function App() {
     setActiveSessionId(null);
     setMessages([]);
     setCurrentTraceEvents([]);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
   };
 
   const handleDeleteSession = async (id) => {
@@ -238,11 +272,20 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-950 text-slate-100">
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden transition-opacity"
+          aria-label="Close sidebar"
+        />
+      )}
+
       {/* Sidebar with permanent toggle */}
       <Sidebar
         isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(false)}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -254,26 +297,27 @@ export default function App() {
       />
 
       {/* Main Chat Content */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 relative">
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-slate-950 relative min-w-0">
         {/* Top Navbar */}
-        <header className="h-14 border-b border-slate-800/80 px-4 flex items-center justify-between shrink-0 bg-slate-950/80 backdrop-blur-md z-10">
-          <div className="flex items-center gap-3">
+        <header className="h-14 border-b border-slate-800/80 px-3 sm:px-4 flex items-center justify-between shrink-0 bg-slate-950/80 backdrop-blur-md z-20">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Permanent sidebar toggle button */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors flex items-center justify-center border border-slate-800"
+              className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 active:bg-slate-700 rounded-xl transition-colors flex items-center justify-center border border-slate-800 bg-slate-900/80 shadow-sm"
               title={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
+              aria-label={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight text-white">StudyPilot</span>
-              <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+              <span className="font-bold text-sm tracking-tight text-white whitespace-nowrap">StudyPilot</span>
+              <span className="text-[11px] text-slate-400 font-mono hidden sm:inline truncate max-w-[200px]">
                 / {activeSessionId ? 'Active Session' : 'New Research Workspace'}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Agent Ready
@@ -342,7 +386,12 @@ export default function App() {
                     )}
 
                     <div className="prose prose-invert prose-sm max-w-none break-words">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {preprocessMarkdown(m.content)}
+                      </ReactMarkdown>
                     </div>
 
                     {/* Sources citations */}
